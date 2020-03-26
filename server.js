@@ -1,17 +1,24 @@
 require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
-
-console.log(process.env.API_TOKEN)
+const cors = require('cors')
+const helmet = require('helmet')
+const POKEDEX = require('./pokedex.json')
 
 const app = express()
 
 app.use(morgan('dev'))
+app.use(helmet())
+app.use(cors())
 
 app.use(function validateBearerToken(req, res, next) {
-    console.log('validate bearer token middleware')
-    debugger
-    //move to the next middleware
+    const authToken = req.get('Authorization')
+    const apiToken = process.env.API_TOKEN
+    
+    if( !authToken || authToken.split(' ')[1] !== apiToken){
+        return res.status(401).json({error: 'Unauthorized request'})
+    }    
+
     next()
 })
 
@@ -27,7 +34,22 @@ function handleGetTypes(req, res) {
 app.get('/types', handleGetTypes)
 
 function handleGetPokemon(req, res) {
-    res.send('Hello, pokemon')
+    let response = POKEDEX.pokemon;
+
+    if (req.query.name) {
+        response = response.filter(pokemon =>
+        pokemon.name.toLowerCase()
+            .includes(req.query.name.toLowerCase())
+        )
+    }
+
+    if (req.query.type) {
+        response = response.filter(pokemon =>
+        pokemon.type.includes(req.query.type)
+        )
+    }
+
+    res.json(response)
 }
 
 app.get('/pokemon', handleGetPokemon)
